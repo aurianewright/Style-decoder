@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Style Decoder</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter','Helvetica Neue',sans-serif;background:#111;color:#fff;min-height:100vh;}
+:root{--accent:#fff;--accent-soft:rgba(255,255,255,0.07);--accent-border:rgba(255,255,255,0.2);}
+body.mode-photography{--accent:#c4a46b;--accent-soft:rgba(196,164,107,0.1);--accent-border:rgba(196,164,107,0.3);}
+body.mode-design{--accent:#8aafc4;--accent-soft:rgba(138,175,196,0.1);--accent-border:rgba(138,175,196,0.3);}
+body.mode-uxui{--accent:#a98bc4;--accent-soft:rgba(169,139,196,0.1);--accent-border:rgba(169,139,196,0.3);}
+.layout{display:flex;min-height:100vh;}
+.sidebar{width:220px;min-width:220px;border-right:1px solid #222;background:#0a0a0a;position:sticky;top:0;height:100vh;overflow:hidden;transition:width 0.25s,min-width 0.25s;display:flex;flex-direction:column;flex-shrink:0;}
+.sidebar.collapsed{width:40px;min-width:40px;}
+.sb-top{display:flex;align-items:center;justify-content:space-between;padding:18px 14px 12px;}
+.sidebar.collapsed .sb-top{justify-content:center;padding:18px 0 12px;}
+.sb-title{font-size:10px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:#fff;white-space:nowrap;}
+.sidebar.collapsed .sb-title{display:none;}
+.sb-toggle{background:none;border:none;cursor:pointer;color:#fff;display:flex;align-items:center;padding:2px;flex-shrink:0;}
+.sb-toggle:hover{opacity:0.7;}
+.sb-toggle svg{transition:transform 0.25s;}
+.sidebar.collapsed .sb-toggle svg{transform:rotate(180deg);}
+.sb-content{padding:0 12px 20px;display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1;}
+.sidebar.collapsed .sb-content{display:none;}
+.sb-vert{display:none;writing-mode:vertical-rl;transform:rotate(180deg);font-size:10px;font-weight:600;letter-spacing:1.6px;text-transform:uppercase;color:#fff;margin:10px auto 0;cursor:pointer;}
+.sidebar.collapsed .sb-vert{display:block;}
+.h-empty{font-size:12px;color:#888;line-height:1.6;}
+.h-tile{border:1px solid #252525;border-radius:10px;overflow:hidden;cursor:pointer;transition:border-color 0.15s;background:#181818;}
+.h-tile:hover{border-color:#444;}
+.h-thumb{width:100%;height:66px;display:flex;}
+.h-thumb img{flex:1;object-fit:cover;min-width:0;}
+.h-info{padding:8px 10px;}
+.h-info p{font-size:11px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.h-info span{font-size:10px;color:#888;display:block;margin-top:2px;}
+.main{flex:1;padding:36px 44px 80px;min-width:0;}
+.top-bar{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:32px;gap:20px;}
+.hdr h1{font-size:20px;font-weight:500;color:#fff;letter-spacing:-0.3px;}
+.hdr p{font-size:13px;color:#fff;margin-top:5px;}
+.top-right{display:flex;align-items:center;gap:10px;}
+.mode-btns{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;}
+.mode-btn{background:transparent;border:1px solid #333;border-radius:20px;padding:6px 15px;font-size:12px;color:#fff;cursor:pointer;transition:all 0.15s;}
+.mode-btn:hover{border-color:#666;}
+.mode-btn.active{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent);font-weight:500;}
+.key-btn{background:none;border:1px solid #333;border-radius:20px;padding:6px 10px;color:#888;cursor:pointer;font-size:11px;display:flex;align-items:center;gap:5px;transition:all 0.15s;white-space:nowrap;}
+.key-btn:hover{border-color:#666;color:#fff;}
+.upload-zone{border:1px dashed #555;border-radius:14px;padding:40px 24px;text-align:center;cursor:pointer;transition:all 0.2s;background:#2c2c2c;}
+.upload-zone:hover,.upload-zone.dragover{border-color:#888;background:#333;}
+.upload-zone .icon{font-size:26px;margin-bottom:12px;}
+.upload-zone p{font-size:14px;color:#fff;font-weight:500;}
+.upload-zone span{font-size:12px;color:#bbb;display:block;margin-top:4px;}
+input[type=file]{display:none;}
+.preview-grid{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;}
+.prev-item{position:relative;width:76px;height:76px;border-radius:8px;overflow:hidden;border:1px solid #333;}
+.prev-item img{width:100%;height:100%;object-fit:cover;}
+.prev-item .rm{position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.75);border:none;border-radius:50%;width:18px;height:18px;cursor:pointer;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;}
+.prev-item .rm:hover{background:rgba(180,0,0,0.85);}
+.analyze-btn{margin-top:20px;width:100%;padding:13px;border:none;border-radius:10px;background:#fff;color:#111;font-size:14px;font-weight:600;cursor:pointer;transition:opacity 0.2s;}
+.analyze-btn:hover{opacity:0.88;}
+.analyze-btn:disabled{opacity:0.2;cursor:not-allowed;}
+.error-box{background:#1c0e0e;border:1px solid #4a1f1f;border-radius:10px;padding:14px 18px;color:#f87171;font-size:12px;margin-top:14px;display:none;}
+.loading{text-align:center;padding:60px 0;display:none;}
+.dots{display:flex;gap:6px;justify-content:center;margin-bottom:14px;}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease-in-out infinite;}
+.dot:nth-child(2){animation-delay:0.2s;}
+.dot:nth-child(3){animation-delay:0.4s;}
+@keyframes pulse{0%,80%,100%{opacity:0.2}40%{opacity:1}}
+.loading p{color:#aaa;font-size:13px;}
+.hero-box{border:1px solid var(--accent-border);border-radius:14px;padding:22px 24px 20px;background:var(--accent-soft);flex:1;}
+.hero-title{font-size:22px;font-weight:500;color:var(--accent);letter-spacing:-0.4px;line-height:1.2;margin-bottom:10px;}
+.hero-kws{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;}
+.hero-kw{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:0.9px;color:var(--accent);background:var(--accent-soft);border:1px solid var(--accent-border);border-radius:20px;padding:3px 10px;}
+.hero-desc{font-size:13px;color:#ccc;line-height:1.65;}
+.acc{margin-bottom:6px;border:1px solid #222;border-radius:12px;overflow:hidden;background:#171717;}
+.acc:hover{border-color:#2e2e2e;}
+.acc.open{border-color:#333;}
+.acc-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none;}
+.acc-left{display:flex;align-items:center;gap:12px;min-width:0;flex:1;}
+.acc-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#fff;white-space:nowrap;}
+.acc-prev{display:flex;gap:5px;align-items:center;overflow:hidden;flex:1;min-width:0;}
+.acc-chev{font-size:10px;color:#666;transition:transform 0.2s;flex-shrink:0;}
+.acc.open .acc-chev{transform:rotate(180deg);}
+.acc-body{display:none;padding:16px 18px 18px;border-top:1px solid #1e1e1e;}
+.acc.open .acc-body{display:block;}
+.mini{font-size:11px;color:#666;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.swatches{display:flex;flex-wrap:wrap;gap:6px;}
+.sw-pill{display:inline-flex;align-items:center;gap:6px;background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:4px 10px 4px 6px;}
+.sw-dot{width:13px;height:13px;border-radius:50%;flex-shrink:0;border:1px solid rgba(255,255,255,0.08);}
+.sw-name{font-size:11px;color:#fff;}
+.tags{display:flex;flex-wrap:wrap;gap:7px;}
+.tag{background:#1e1e1e;border:1px solid #2a2a2a;border-radius:20px;padding:5px 12px;font-size:12px;color:#fff;}
+.desc{font-size:13px;color:#ccc;line-height:1.7;}
+.tab-bar{display:flex;border-bottom:1px solid #222;margin-bottom:16px;}
+.tab-btn{background:none;border:none;padding:9px 16px;font-size:12px;color:#888;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
+.tab-btn:hover{color:#fff;}
+.tab-btn.active{color:#fff;border-bottom-color:#fff;}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+.prompt-txt{font-size:12px;color:#ccc;line-height:1.75;font-family:'SF Mono','Fira Code',monospace;white-space:pre-wrap;background:#111;border:1px solid #222;border-radius:8px;padding:14px 16px;margin-bottom:10px;}
+.copy-btn{background:#1e1e1e;border:1px solid #2a2a2a;border-radius:7px;padding:6px 14px;color:#fff;font-size:11px;cursor:pointer;}
+.copy-btn:hover{background:#252525;}
+.copy-btn.copied{color:#6ee7b7;border-color:#1a3a2e;}
+.reset-btn{background:#fff;border:none;border-radius:999px;padding:10px 24px;color:#111;font-size:13px;font-weight:500;cursor:pointer;margin-top:12px;transition:opacity 0.15s;}
+.reset-btn:hover{opacity:0.85;}
+
+</style>
+</head>
+<body class="mode-general">
+
+
+<div class="layout">
+  <div class="sidebar" id="sidebar">
+    <div class="sb-top">
+      <span class="sb-title">Past searches</span>
+      <button class="sb-toggle" onclick="toggleSidebar()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path d="M9 2L4 7L9 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+    </div>
+    <div class="sb-content">
+      <div id="history-list"><p class="h-empty">Your analyzed styles will appear here</p></div>
+    </div>
+    <span class="sb-vert" onclick="toggleSidebar()">Past searches</span>
+  </div>
+
+  <div class="main">
+    <div class="top-bar">
+      <div class="hdr">
+        <h1>Style Decoder</h1>
+        <p>Upload images — get precise prompt language</p>
+      </div>
+      <div class="top-right">
+        <div class="mode-btns">
+          <button class="mode-btn active" data-mode="general" onclick="setMode(this)">General</button>
+          <button class="mode-btn" data-mode="photography" onclick="setMode(this)">Photography</button>
+          <button class="mode-btn" data-mode="design" onclick="setMode(this)">Design</button>
+          <button class="mode-btn" data-mode="uxui" onclick="setMode(this)">UX/UI</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="upload-section">
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="icon">⬆</div>
+        <p>Drop images here or click to upload</p>
+        <span>JPG, PNG, WEBP · up to 5 images</span>
+      </div>
+      <input type="file" id="file-input" accept="image/*" multiple>
+      <div class="preview-grid" id="preview-grid"></div>
+      <button class="analyze-btn" id="analyze-btn" disabled onclick="startAnalysis()">Decode Style</button>
+      <div class="error-box" id="error-box"></div>
+    </div>
+
+    <div class="loading" id="loading-section">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <p id="loading-msg">Analyzing visual style...</p>
+    </div>
+
+    <div id="results-section" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+const files = [];
+let currentMode = 'general';
+let historyData = [];
+let lastPreviews = [];
+let currentResult = null;
+
+window.addEventListener('DOMContentLoaded', restoreHistory);
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+function setMode(btn) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  currentMode = btn.dataset.mode;
+  document.body.className = 'mode-' + currentMode;
+  if (document.getElementById('results-section').style.display !== 'none' && lastPreviews.length) {
+    runAnalysis(lastPreviews);
+  }
+}
+
+const fileInput = document.getElementById('file-input');
+const dropZone  = document.getElementById('drop-zone');
+const previewGrid = document.getElementById('preview-grid');
+const analyzeBtn  = document.getElementById('analyze-btn');
+const errorBox    = document.getElementById('error-box');
+
+fileInput.addEventListener('change', e => addFiles([...e.target.files]));
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); addFiles([...e.dataTransfer.files]); });
+
+function addFiles(newFiles) {
+  newFiles.forEach(f => {
+    if (files.length >= 5 || !f.type.startsWith('image/')) return;
+    files.push(f);
+    const idx = files.length - 1;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const div = document.createElement('div');
+      div.className = 'prev-item';
+      div.innerHTML = `<img src="${ev.target.result}"><button class="rm" onclick="removeFile(${idx})">✕</button>`;
+      previewGrid.appendChild(div);
+    };
+    reader.readAsDataURL(f);
+  });
+  analyzeBtn.disabled = files.length === 0;
+}
+
+function removeFile(idx) {
+  files.splice(idx, 1);
+  previewGrid.innerHTML = '';
+  files.forEach((f, i) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const div = document.createElement('div');
+      div.className = 'prev-item';
+      div.innerHTML = `<img src="${ev.target.result}"><button class="rm" onclick="removeFile(${i})">✕</button>`;
+      previewGrid.appendChild(div);
+    };
+    reader.readAsDataURL(f);
+  });
+  analyzeBtn.disabled = files.length === 0;
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function startAnalysis() {
+  errorBox.style.display = 'none';
+  document.getElementById('upload-section').style.display = 'none';
+  showLoading();
+  const previews = [];
+  for (const f of files) {
+    const b64 = await toBase64(f);
+    previews.push({ src: `data:${f.type};base64,${b64}`, type: f.type, data: b64 });
+  }
+  lastPreviews = previews;
+  await runAnalysis(previews);
+}
+
+async function runAnalysis(previews) {
+  showLoading();
+  document.getElementById('results-section').style.display = 'none';
+  try {
+    const result = await callAPI(previews);
+    currentResult = result;
+    pushHistory(result, previews.map(p => p.src));
+    showResults(result, previews);
+  } catch(err) {
+    document.getElementById('loading-section').style.display = 'none';
+    document.getElementById('upload-section').style.display = 'block';
+    errorBox.style.display = 'block';
+    errorBox.textContent = err.message || 'Something went wrong. Please try again.';
+  }
+}
+
+function showLoading() {
+  const msgs = {general:'Analyzing visual style...',photography:'Reading photographic language...',design:'Decoding design vocabulary...',uxui:'Parsing interface aesthetics...'};
+  document.getElementById('loading-msg').textContent = msgs[currentMode];
+  document.getElementById('loading-section').style.display = 'block';
+}
+
+async function callAPI(previews) {
+  const modeInstructions = {
+    general:'Analyze overall visual style: color, composition, mood, texture, lighting, cultural references.',
+    photography:'Focus on photographic style: camera/lens, depth of field, grain/film stock, color grading, exposure, shooting technique (editorial, documentary, fine art), lighting setup, photographic era or movement.',
+    design:'Focus on graphic design: typography style, grid/layout systems, color palette, design era or movement (Bauhaus, Swiss, Memphis), hierarchy, print vs digital sensibility, brand or editorial tone.',
+    uxui:'Focus on UI/UX: interface aesthetic (glassmorphism, neumorphism, flat, brutalist, minimal), color system, spacing/grid density, component style (cards, buttons, forms), typography hierarchy, motion/interaction language, design system references.'
+  }[currentMode];
+
+  const modeLabel = {general:'General',photography:'Photography',design:'Design',uxui:'UX/UI'}[currentMode];
+
+  const prompt = `You are an expert design analyst and creative director with deep knowledge of visual aesthetics, art history, and AI image generation. ${modeInstructions}
+
+Analyse the image(s) with extreme precision. Every field must contain rich, specific, actionable detail — never write generic descriptions. Be a specialist, not a generalist.
+
+Return ONLY valid JSON. No markdown fences, no explanation, no text before or after the JSON object.
+
+{
+  "styleTitle": "4-6 word evocative and specific style title that captures the exact aesthetic",
+  "keywords": ["10-12 precise descriptive keywords covering mood, era, technique, material, culture"],
+  "styleDesc": "3 sentences. Describe the overall aesthetic with specific visual details — mention actual colours, actual textures, actual mood. No vague words like 'modern' or 'clean' without qualification.",
+  "palette": [
+    {"name": "specific descriptive colour name", "hex": "#accurate-hex-from-image", "usage": "exactly where and how this colour appears in the image"}
+  ],
+  "fonts": [
+    {"name": "closest specific font name or typeface family", "category": "serif|sans-serif|display|monospace|script", "note": "describe weight, spacing, role and visual personality"}
+  ],
+  "texture": ["8-10 precise material, surface, finish, and tactile descriptors — be specific: not just 'rough' but 'rough-hewn concrete' or 'brushed oxidised copper'"],
+  "composition": "4 sentences. Describe the exact layout structure, proportions, spatial hierarchy, focal point placement, use of negative space, framing, and how the eye moves through the image.",
+  "lighting": "4 sentences. Describe the exact light source type and position, quality (hard/soft/diffused/directional), colour temperature with approximate Kelvin value, shadow behaviour, highlight intensity, and the emotional atmosphere it creates.",
+  "references": ["10-12 SPECIFIC references: named artists, photographers, designers, exact decades, geographic regions, named art movements, named brands or publications that match this aesthetic"],
+  "firefly": "A complete, standalone Adobe Firefly image generation prompt. Embed ALL discovered specifics: name the exact colours with descriptive labels, describe the precise composition, specify the exact lighting setup, name the style references directly, describe the textures and materials. Someone must be able to paste this prompt cold and recreate this exact visual style. Minimum 6 sentences. For ${modeLabel} mode.",
+  "claude": "A complete, standalone prompt for Claude or any image generation model. Include: exact colour palette descriptions, precise compositional instructions (where elements are placed, proportions, framing), specific lighting conditions, named texture and material qualities, explicit style references by name. This must be a self-contained creative brief that fully recreates this aesthetic without seeing the original image. Minimum 7 sentences. For ${modeLabel} mode.",
+  "chatgpt": "A complete, standalone DALL-E / ChatGPT image prompt. Start with the most important style keywords as a comma-separated tag list, then expand into specific instructions covering colour, composition, lighting, texture, and named references. Must be detailed enough to recreate the exact style without the original. Minimum 4 sentences. For ${modeLabel} mode."
+}
+
+STRICT RULES:
+- Palette: extract 6-8 colours with accurate hex values sampled from the actual image
+- References: every single one must be a proper noun (a real name, movement, decade, or place) — no vague terms
+- The three AI prompts are the most important output: each must be 100% self-contained and immediately copy-pasteable. A person should get the same style back by pasting any one of them into an AI tool, cold, with no other context.
+- If you are uncertain about a specific value, make your best expert inference — never leave a field vague or generic`;
+
+  const res = await fetch('/api/analyze', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      images: previews.map(p => ({ type: p.type, data: p.data })),
+      prompt
+    })
+  }).catch(() => { throw new Error('Network error — please check your connection and try again.'); });
+
+  const data = await res.json();
+  if (data.error) throw new Error('API error: ' + data.error);
+  const clean = data.text.replace(/```json|```/g, '').trim();
+  try { return JSON.parse(clean); }
+  catch(e) { throw new Error('Parse failed: ' + data.text.slice(0, 300)); }
+}
+
+function pushHistory(result, previewSrcs) {
+  const modeLabel = {general:'General',photography:'Photography',design:'Design',uxui:'UX/UI'}[currentMode];
+  historyData.unshift({ title:result.styleTitle, previews:previewSrcs.slice(0,3), mode:modeLabel, result });
+  if (historyData.length > 20) historyData.pop();
+  renderHistoryList();
+  persistHistory();
+}
+
+function renderHistoryList() {
+  const list = document.getElementById('history-list');
+  if (!historyData.length) { list.innerHTML = '<p class="h-empty">Your analyzed styles will appear here</p>'; return; }
+  list.innerHTML = historyData.map((e,i) => {
+    const thumbs = e.previews.map(p=>`<img src="${p}">`).join('');
+    return `<div class="h-tile" onclick="showHistoryItem(${i})">
+      <div class="h-thumb">${thumbs}</div>
+      <div class="h-info"><p title="${e.title}">${e.title}</p><span>${e.mode}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function showHistoryItem(idx) {
+  const entry = historyData[idx];
+  currentResult = entry.result;
+  lastPreviews = entry.previews.map(src => ({ src, type:'image/jpeg', data:'' }));
+  document.getElementById('upload-section').style.display = 'none';
+  document.getElementById('loading-section').style.display = 'none';
+  showResults(entry.result, lastPreviews);
+}
+
+function persistHistory() {
+  try { localStorage.setItem('sd-history', JSON.stringify(historyData)); } catch(e) {}
+}
+
+function restoreHistory() {
+  try {
+    const stored = localStorage.getItem('sd-history');
+    if (stored) { historyData = JSON.parse(stored); renderHistoryList(); }
+  } catch(e) {}
+}
+
+function makeAcc(id, label, prevHtml, bodyHtml) {
+  return `<div class="acc" id="${id}">
+    <div class="acc-hdr" onclick="toggleAcc('${id}')">
+      <div class="acc-left">
+        <span class="acc-lbl">${label}</span>
+        <div class="acc-prev" id="${id}-p">${prevHtml}</div>
+      </div>
+      <span class="acc-chev">▼</span>
+    </div>
+    <div class="acc-body">${bodyHtml}</div>
+  </div>`;
+}
+
+function toggleAcc(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+  const prev = document.getElementById(id + '-p');
+  if (prev) prev.style.display = el.classList.contains('open') ? 'none' : 'flex';
+}
+
+function showResults(r, previews) {
+  document.getElementById('loading-section').style.display = 'none';
+  const sec = document.getElementById('results-section');
+  sec.style.display = 'block';
+
+  const kws = (r.keywords||[]).map(k=>`<span class="hero-kw">${k}</span>`).join('');
+
+  const imgPanelSrcs = (previews||[]).filter(p=>p.src).slice(0,3);
+  const imgPanel = imgPanelSrcs.length ? `
+    <div style="display:flex;flex-direction:column;gap:6px;width:130px;min-width:130px;">
+      ${imgPanelSrcs.map(p=>`<div style="flex:1;border-radius:10px;overflow:hidden;border:1px solid #2a2a2a;min-height:40px;"><img src="${p.src}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>`).join('')}
+    </div>` : '';
+
+  const swPreview = (r.palette||[]).slice(0,4).map(c=>
+    `<div class="sw-pill"><div class="sw-dot" style="background:${c.hex}"></div><span class="sw-name">${c.name}</span></div>`
+  ).join('');
+
+  const fontRows = (r.fonts||[]).length ? `
+    <div style="margin-top:16px;border-top:1px solid #1e1e1e;padding-top:14px;">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#555;margin-bottom:10px;">Typography</div>
+      ${(r.fonts||[]).map(f=>`
+        <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:8px;">
+          <span style="font-size:13px;color:#fff;font-weight:500;">${f.name}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <span style="font-size:10px;color:#555;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:20px;padding:2px 8px;">${f.category}</span>
+            <span style="font-size:11px;color:#666;">${f.note}</span>
+          </div>
+        </div>`).join('')}
+    </div>` : '';
+
+  const swFull = `<div class="swatches">${(r.palette||[]).map(c=>
+    `<div class="sw-pill"><div class="sw-dot" style="background:${c.hex}"></div><span class="sw-name">${c.name}</span></div>`
+  ).join('')}</div>${fontRows}`;
+
+  const promptsBody = `
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab(event,'tff')">Adobe Firefly</button>
+      <button class="tab-btn" onclick="switchTab(event,'tcl')">Claude</button>
+      <button class="tab-btn" onclick="switchTab(event,'tgpt')">ChatGPT / DALL·E</button>
+    </div>
+    <div id="tff" class="tab-pane active"><div class="prompt-txt" id="ptff">${esc(r.firefly||'')}</div><button class="copy-btn" onclick="copyP('ptff',this)">Copy prompt</button></div>
+    <div id="tcl" class="tab-pane"><div class="prompt-txt" id="ptcl">${esc(r.claude||'')}</div><button class="copy-btn" onclick="copyP('ptcl',this)">Copy prompt</button></div>
+    <div id="tgpt" class="tab-pane"><div class="prompt-txt" id="ptgpt">${esc(r.chatgpt||'')}</div><button class="copy-btn" onclick="copyP('ptgpt',this)">Copy prompt</button></div>`;
+
+  sec.innerHTML =
+    `<div style="display:flex;gap:14px;align-items:stretch;margin-bottom:10px;">
+      <div class="hero-box"><div class="hero-title">${r.styleTitle}</div><div class="hero-kws">${kws}</div><div class="hero-desc">${r.styleDesc}</div></div>
+      ${imgPanel}
+    </div>`
+    + makeAcc('acc-pal','Color &amp; font', swPreview, swFull)
+    + makeAcc('acc-tex','Texture &amp; materials', `<span class="mini">${(r.texture||[]).slice(0,2).join(' · ')}</span>`, `<div class="tags">${(r.texture||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>`)
+    + makeAcc('acc-com','Composition', `<span class="mini">${(r.composition||'').slice(0,50)}…</span>`, `<div class="desc">${r.composition}</div>`)
+    + makeAcc('acc-lit','Lighting &amp; atmosphere', `<span class="mini">${(r.lighting||'').slice(0,50)}…</span>`, `<div class="desc">${r.lighting}</div>`)
+    + makeAcc('acc-ref','Style references', `<span class="mini">${(r.references||[]).slice(0,3).join(' · ')}</span>`, `<div class="tags">${(r.references||[]).map(t=>`<span class="tag">${t}</span>`).join('')}</div>`)
+    + makeAcc('acc-prm','Ready-to-copy prompts', `<span class="mini">Firefly · Claude · ChatGPT</span>`, promptsBody)
+    + `<button class="reset-btn" onclick="resetApp()">← Analyze new images</button>`;
+}
+
+function switchTab(e, id) {
+  const bar = e.target.closest('.tab-bar');
+  bar.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  bar.parentElement.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function copyP(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).textContent);
+  btn.textContent = 'Copied ✓';
+  btn.classList.add('copied');
+  setTimeout(()=>{btn.textContent='Copy prompt';btn.classList.remove('copied');},2000);
+}
+
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function resetApp() {
+  files.length = 0;
+  lastPreviews = [];
+  currentResult = null;
+  previewGrid.innerHTML = '';
+  analyzeBtn.disabled = true;
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('upload-section').style.display = 'block';
+}
+</script>
+</body>
+</html>
